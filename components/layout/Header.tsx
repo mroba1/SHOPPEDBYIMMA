@@ -9,9 +9,9 @@ import { whatsappLink, generalMessage } from "@/lib/whatsapp";
 import { cn } from "@/lib/cn";
 import { useCart } from "@/components/cart/CartProvider";
 import { Wordmark } from "@/components/ui/Brand";
-import { ArrowUpRight, BagIcon, CloseIcon, MenuIcon, WhatsAppIcon } from "@/components/ui/Icons";
+import { ArrowUpRight, BagIcon, CloseIcon, MenuIcon, UserIcon, WhatsAppIcon } from "@/components/ui/Icons";
 
-export function Header({ categories }: { categories: Pick<Category, "slug" | "name">[] }) {
+export function Header({ categories, accountName }: { categories: Pick<Category, "slug" | "name">[]; accountName: string | null }) {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const { count, openDrawer, bump } = useCart();
@@ -70,6 +70,14 @@ export function Header({ categories }: { categories: Pick<Category, "slug" | "na
             >
               <WhatsAppIcon width={16} height={16} /> Chat
             </a>
+            <Link
+              href={accountName ? "/account" : "/account/login"}
+              className="grid size-11 place-items-center rounded-full transition hover:bg-white/5"
+              aria-label={accountName ? `My account (${accountName})` : "Sign in (optional)"}
+              title={accountName ? "My account" : "Sign in (optional)"}
+            >
+              <UserIcon width={21} height={21} className={accountName ? "text-blush" : undefined} />
+            </Link>
             <button
               onClick={openDrawer}
               className="relative -mr-2 grid size-11 place-items-center rounded-full transition hover:bg-white/5"
@@ -118,6 +126,9 @@ export function Header({ categories }: { categories: Pick<Category, "slug" | "na
             ))}
           </ul>
           <div className="mt-auto pt-10">
+            <Link href={accountName ? "/account" : "/account/login"} onClick={() => setMenuOpen(false)} className="mb-3 flex items-center justify-center gap-2 py-3 text-sm text-nude">
+              <UserIcon width={18} height={18} /> {accountName ? "My account & orders" : "Sign in / create account (optional)"}
+            </Link>
             <a href={whatsappLink(generalMessage)} target="_blank" rel="noopener" className="btn btn-blush w-full">
               <WhatsAppIcon width={18} height={18} /> Chat with Imma
             </a>

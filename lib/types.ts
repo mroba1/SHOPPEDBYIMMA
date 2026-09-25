@@ -4,6 +4,7 @@
 export type OrderStatus =
   | "PENDING"
   | "CONFIRMED"
+  | "AWAITING_PAYMENT"
   | "PAYMENT_CONFIRMED"
   | "PROCESSING"
   | "SHIPPED"
@@ -70,6 +71,8 @@ export interface OrderEvent {
 
 export interface Order {
   id: string;
+  /** Set only when the customer was signed in to an (optional) account */
+  customerId?: string;
   /** Short code the customer sends on WhatsApp, e.g. SBM-7K42P */
   code: string;
   customer: CustomerInfo;
@@ -94,4 +97,41 @@ export interface CartLine {
   size?: string;
   color?: string;
   quantity: number;
+}
+
+// ---------- Accounts ----------
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  /** Bumped on password change / "log out everywhere" to invalidate old sessions */
+  sessionVersion: number;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+/** Optional customer account. Guest checkout never needs one. */
+export interface CustomerAccount {
+  id: string;
+  name: string;
+  whatsapp: string;
+  email?: string;
+  passwordHash: string;
+  address?: string;
+  sessionVersion: number;
+  createdAt: string;
+}
+
+/** What leaves the data layer: never includes the password hash. */
+export type PublicAdmin = Omit<AdminUser, "passwordHash">;
+export type PublicCustomer = Omit<CustomerAccount, "passwordHash">;
+
+export interface StoreSettings {
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  /** Extra line added to the payment-details WhatsApp message */
+  paymentNote: string;
 }

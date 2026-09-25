@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
 import { randomUUID } from "crypto";
-import type { Category, Order, Product } from "../types";
+import type { AdminUser, Category, CustomerAccount, Order, Product, StoreSettings } from "../types";
 import { buildSeedOrders, buildSeedProducts, seedCategories } from "./seed";
 
 // A tiny JSON-file database so the MVP works end-to-end with zero setup.
@@ -13,6 +13,24 @@ export interface DbShape {
   categories: Category[];
   products: Product[];
   orders: Order[];
+  admins: AdminUser[];
+  /** Optional customer accounts (guests never appear here) */
+  customers: CustomerAccount[];
+  settings: StoreSettings;
+}
+
+export const defaultSettings: StoreSettings = { bankName: "", accountNumber: "", accountName: "", paymentNote: "" };
+
+/** Fills in collections added after a data file was first created. */
+function migrate(db: Partial<DbShape>): DbShape {
+  return {
+    categories: db.categories ?? [],
+    products: db.products ?? [],
+    orders: db.orders ?? [],
+    admins: db.admins ?? [],
+    customers: db.customers ?? [],
+    settings: { ...defaultSettings, ...db.settings },
+  };
 }
 
 // Where the JSON file and uploads live:
@@ -34,11 +52,11 @@ const state = (g.__sbiDb ??= { loading: null, queue: Promise.resolve() });
 
 async function init(): Promise<DbShape> {
   try {
-    return JSON.parse(await fs.readFile(DB_FILE, "utf8")) as DbShape;
+    return migrate(JSON.parse(await fs.readFile(DB_FILE, "utf8")));
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
     const products = buildSeedProducts();
-    const db: DbShape = { categories: seedCategories, products, orders: buildSeedOrders(products) };
+    const db = migrate({ categories: seedCategories, products, orders: buildSeedOrders(products) });
     // Never let a failed first save take the whole site down: the demo
     // catalogue still renders from memory.
     await persist(db).catch((err) => console.warn("[store] could not save seed data:", err.message));

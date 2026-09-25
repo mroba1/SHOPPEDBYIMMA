@@ -12,7 +12,7 @@ export function orderMessage(code: string) {
     "",
     `Order Code: ${code}`,
     "",
-    "Please confirm the availability of my selected items and send me the payment details.",
+    "Please confirm my selected items and send me the payment details.",
   ].join("\n");
 }
 

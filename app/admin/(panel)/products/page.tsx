@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/auth";
 import Link from "next/link";
 import { listCategories, listProducts } from "@/lib/data/repo";
 import { AdminProductTable } from "@/components/admin/AdminProductTable";
@@ -6,12 +7,13 @@ import { CheckCircle, PlusIcon } from "@/components/ui/Icons";
 export const metadata = { title: "Products" };
 
 export default async function ProductsPage({ searchParams }: PageProps<"/admin/products">) {
+  await requireAdmin();
   const [products, categories, sp] = await Promise.all([listProducts(), listCategories(), searchParams]);
   return (
     <div>
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-serif text-4xl italic">Products</h1>
+          <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight sm:text-3xl">Products</h1>
           <p className="mt-1 text-sm text-taupe">{products.length} products · tap availability to switch between available and sold out</p>
         </div>
         <Link href="/admin/products/new" className="btn btn-dark shrink-0 !min-h-11 !px-5 !text-[0.7rem]">

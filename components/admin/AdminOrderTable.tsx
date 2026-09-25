@@ -9,11 +9,14 @@ import { ProductImage } from "@/components/ui/ProductImage";
 import { SearchIcon } from "@/components/ui/Icons";
 import { PaymentBadge, StatusBadge } from "./StatusBadge";
 
-type Filter = "ALL" | "AWAITING_PAYMENT" | OrderStatus;
+export type OrderFilter = "ALL" | OrderStatus;
+type Filter = OrderFilter;
 
+// Each filter is one order status, so the counts match the dashboard cards exactly.
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "ALL", label: "All" },
   { key: "PENDING", label: "Pending" },
+  { key: "CONFIRMED", label: "Confirmed" },
   { key: "AWAITING_PAYMENT", label: "Awaiting payment" },
   { key: "PAYMENT_CONFIRMED", label: "Paid" },
   { key: "PROCESSING", label: "Processing" },
@@ -22,8 +25,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "CANCELLED", label: "Cancelled" },
 ];
 
-const matches = (o: Order, f: Filter) =>
-  f === "ALL" ? true : f === "AWAITING_PAYMENT" ? o.status === "CONFIRMED" && o.paymentStatus === "PENDING" : o.status === f;
+const matches = (o: Order, f: Filter) => f === "ALL" || o.status === f;
 
 export function AdminOrderTable({ orders, showFilters = true, initialFilter = "ALL" }: { orders: Order[]; showFilters?: boolean; initialFilter?: Filter }) {
   const [filter, setFilter] = useState<Filter>(initialFilter);
@@ -86,7 +88,8 @@ export function AdminOrderTable({ orders, showFilters = true, initialFilter = "A
                 <tr>
                   <th className="px-5 py-3.5 font-semibold">Order</th>
                   <th className="px-5 py-3.5 font-semibold">Customer</th>
-                  <th className="px-5 py-3.5 font-semibold">Items</th>
+                  <th className="px-5 py-3.5 font-semibold">Date</th>
+                  <th className="hidden px-5 py-3.5 font-semibold xl:table-cell">Items</th>
                   <th className="px-5 py-3.5 font-semibold">Total</th>
                   <th className="px-5 py-3.5 font-semibold">Payment</th>
                   <th className="px-5 py-3.5 font-semibold">Status</th>
@@ -99,13 +102,13 @@ export function AdminOrderTable({ orders, showFilters = true, initialFilter = "A
                       <Link href={`/admin/orders/${o.code}`} className="font-mono font-semibold tracking-wide after:absolute after:inset-0">
                         {o.code}
                       </Link>
-                      <p className="mt-0.5 text-xs text-taupe">{formatDate(o.createdAt)}</p>
                     </td>
                     <td className="px-5 py-4">
                       <p className="font-medium">{o.customer.name}</p>
                       <p className="text-xs text-taupe">{o.customer.whatsapp}</p>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4 text-xs whitespace-nowrap text-espresso">{formatDate(o.createdAt)}</td>
+                    <td className="hidden px-5 py-4 xl:table-cell">
                       <ItemThumbs order={o} />
                     </td>
                     <td className="px-5 py-4 font-semibold">{formatPrice(o.total)}</td>

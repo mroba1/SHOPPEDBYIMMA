@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrderByCode } from "@/lib/data/repo";
+import { getCurrentCustomer } from "@/lib/auth";
 import { normalizeOrderCode } from "@/lib/format";
 import { site } from "@/lib/config";
 import { OrderSummary } from "@/components/checkout/OrderSummary";
@@ -14,7 +15,7 @@ export const metadata: Metadata = { title: "Your order", robots: { index: false 
 
 export default async function OrderConfirmationPage({ params }: PageProps<"/order/[code]">) {
   const code = normalizeOrderCode((await params).code);
-  const order = await getOrderByCode(code);
+  const [order, me] = await Promise.all([getOrderByCode(code), getCurrentCustomer()]);
   if (!order) notFound();
 
   // Only items + total are shown here — never the customer's phone or address.
@@ -75,6 +76,20 @@ export default async function OrderConfirmationPage({ params }: PageProps<"/orde
             ))}
           </ol>
         </section>
+
+        {me && order.customerId === me.id ? (
+          <p className="mt-10 rounded-2xl bg-blush/35 px-5 py-4 text-sm">
+            Saved to your account. <Link href="/account" className="font-semibold underline underline-offset-4">View my orders</Link>
+          </p>
+        ) : !me ? (
+          <div className="mt-10 rounded-2xl bg-linen/80 px-5 py-4 text-sm">
+            <p className="font-semibold">Want to track this order later? (optional)</p>
+            <p className="mt-1 text-espresso/80">
+              <Link href={`/account/register?claim=${order.code}&next=/account`} className="font-semibold text-charcoal underline underline-offset-4">Create an account</Link>{" "}
+              with the same WhatsApp number and this order is added automatically. Your order is already saved either way.
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-12">
           <OrderSummary lines={lines} title="Your items" />

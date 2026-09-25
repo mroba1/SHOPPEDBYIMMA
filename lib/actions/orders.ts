@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createOrder, updateOrder, type NewOrderLine } from "@/lib/data/repo";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentCustomer, requireAdmin } from "@/lib/auth";
 import { ORDER_STATUSES } from "@/lib/format";
 import type { OrderStatus, PaymentStatus } from "@/lib/types";
 
@@ -28,7 +28,14 @@ export async function placeOrder(input: {
   if (input.lines.length > 50) return { ok: false, error: "That's a lot of items! Please send us a message on WhatsApp instead." };
 
   try {
-    const order = await createOrder({ name: name.slice(0, 80), whatsapp: whatsapp.slice(0, 20), address: address.slice(0, 300), note }, input.lines);
+    // Linked to an account only if the customer is signed in, and the id comes
+    // from their session cookie, never from the browser's form data.
+    const account = await getCurrentCustomer();
+    const order = await createOrder(
+      { name: name.slice(0, 80), whatsapp: whatsapp.slice(0, 20), address: address.slice(0, 300), note },
+      input.lines,
+      account?.id,
+    );
     revalidatePath("/admin", "layout");
     return { ok: true, code: order.code };
   } catch (e) {

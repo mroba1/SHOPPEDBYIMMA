@@ -72,7 +72,7 @@ export function ProductForm({ product, categories, suggestedCode }: { product?: 
       <Link href="/admin/products" className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-taupe uppercase hover:text-charcoal">
         <ArrowLeft width={16} height={16} /> Products
       </Link>
-      <h1 className="font-serif mt-3 text-4xl italic">{product ? "Edit product" : "Add a product"}</h1>
+      <h1 className="mt-3 text-[1.75rem] leading-tight font-semibold tracking-tight sm:text-3xl">{product ? "Edit product" : "Add a product"}</h1>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-6">

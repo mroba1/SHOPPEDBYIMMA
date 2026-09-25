@@ -2,6 +2,7 @@ import { randomInt, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import type { Category, CustomerInfo, Order, OrderStatus, PaymentStatus, Product } from "../types";
+// Accounts, sessions support and store settings live in ./local-accounts (re-exported at the bottom).
 import { orderStatusLabel } from "../format";
 import { site } from "../config";
 import { UPLOAD_DIR, read, write } from "./store";
@@ -169,8 +170,10 @@ export interface NewOrderLine {
   quantity: number;
 }
 
-export async function createOrder(customer: CustomerInfo, lines: NewOrderLine[]) {
+export async function createOrder(customer: CustomerInfo, lines: NewOrderLine[], customerId?: string) {
   return write((db) => {
+    // SNAPSHOT: name, code, image and price are copied onto the order now, so
+    // editing or deleting the product later never changes what was ordered.
     const items = lines.map((l) => {
       const p = db.products.find((x) => x.id === l.productId);
       if (!p) throw new Error("One of the items in your cart is no longer in the shop. Please remove it and try again.");
@@ -188,8 +191,10 @@ export async function createOrder(customer: CustomerInfo, lines: NewOrderLine[])
       };
     });
     const now = new Date().toISOString();
+    const account = customerId ? db.customers.find((c) => c.id === customerId) : undefined;
     const order: Order = {
       id: `ord_${randomUUID().slice(0, 10)}`,
+      customerId: account?.id,
       code: newOrderCode(new Set(db.orders.map((o) => o.code))),
       customer,
       items,
@@ -198,9 +203,11 @@ export async function createOrder(customer: CustomerInfo, lines: NewOrderLine[])
       paymentStatus: "PENDING",
       createdAt: now,
       updatedAt: now,
-      history: [{ at: now, label: "Order created on website" }],
+      history: [{ at: now, label: account ? "Order created on website (signed in)" : "Order created on website (guest)" }],
     };
     db.orders.push(order);
+    // Remember the delivery address for their next order
+    if (account && !account.address) account.address = customer.address;
     return order;
   });
 }
@@ -215,26 +222,35 @@ export async function getOrderByCode(code: string) {
   return db.orders.find((o) => o.code === code) ?? null;
 }
 
+const EARLY: OrderStatus[] = ["PENDING", "CONFIRMED", "AWAITING_PAYMENT"];
+
 export async function updateOrder(code: string, patch: { status?: OrderStatus; paymentStatus?: PaymentStatus }) {
   return write((db) => {
     const o = db.orders.find((x) => x.code === code);
     if (!o) throw new Error("Order not found");
     const now = new Date().toISOString();
+    const log = (label: string) => o.history.push({ at: now, label });
+    let status = patch.status;
 
+    // Keep the two dropdowns consistent so the owner can't end up with a
+    // "paid but awaiting payment" order by accident.
     if (patch.paymentStatus && patch.paymentStatus !== o.paymentStatus) {
       o.paymentStatus = patch.paymentStatus;
-      o.history.push({ at: now, label: patch.paymentStatus === "CONFIRMED" ? "Payment marked as confirmed" : "Payment marked as pending" });
-      // Confirming payment moves an early-stage order forward automatically.
-      if (patch.paymentStatus === "CONFIRMED" && (o.status === "PENDING" || o.status === "CONFIRMED") && !patch.status) {
-        patch.status = "PAYMENT_CONFIRMED";
-      }
+      log(patch.paymentStatus === "CONFIRMED" ? "Payment marked as confirmed" : "Payment marked as pending");
+      if (!status && patch.paymentStatus === "CONFIRMED" && EARLY.includes(o.status)) status = "PAYMENT_CONFIRMED";
+      if (!status && patch.paymentStatus === "PENDING" && o.status === "PAYMENT_CONFIRMED") status = "AWAITING_PAYMENT";
     }
-    if (patch.status && patch.status !== o.status) {
-      o.status = patch.status;
-      o.history.push({ at: now, label: `Status changed to ${orderStatusLabel[patch.status]}` });
-      if (patch.status === "PAYMENT_CONFIRMED" && o.paymentStatus !== "CONFIRMED") {
+    if (status && status !== o.status) {
+      o.status = status;
+      log(`Status changed to ${orderStatusLabel[status]}`);
+      if (status === "PAYMENT_CONFIRMED" && o.paymentStatus !== "CONFIRMED") {
         o.paymentStatus = "CONFIRMED";
-        o.history.push({ at: now, label: "Payment marked as confirmed" });
+        log("Payment marked as confirmed");
+      }
+      // Moving a paid order back to a pre-payment stage means it isn't paid any more
+      if (EARLY.includes(status) && o.paymentStatus === "CONFIRMED" && !patch.paymentStatus) {
+        o.paymentStatus = "PENDING";
+        log("Payment marked as pending");
       }
     }
     o.updatedAt = now;
@@ -242,54 +258,22 @@ export async function updateOrder(code: string, patch: { status?: OrderStatus; p
   });
 }
 
-// ---------- Customers (derived from orders) ----------
-
-export interface CustomerSummary {
-  name: string;
-  whatsapp: string;
-  address: string;
-  orders: number;
-  totalSpent: number;
-  lastOrderAt: string;
-  lastOrderCode: string;
-}
-
-export async function listCustomers(): Promise<CustomerSummary[]> {
-  const orders = await listOrders(); // newest first
-  const map = new Map<string, CustomerSummary>();
-  for (const o of orders) {
-    const key = o.customer.whatsapp.replace(/\D/g, "").replace(/^234/, "0");
-    const c = map.get(key);
-    const paid = o.paymentStatus === "CONFIRMED" ? o.total : 0;
-    if (c) {
-      c.orders += 1;
-      c.totalSpent += paid;
-    } else {
-      map.set(key, {
-        name: o.customer.name,
-        whatsapp: o.customer.whatsapp,
-        address: o.customer.address,
-        orders: 1,
-        totalSpent: paid,
-        lastOrderAt: o.createdAt,
-        lastOrderCode: o.code,
-      });
-    }
-  }
-  return [...map.values()];
-}
-
 export async function getStats() {
   const orders = await listOrders();
-  const live = orders.filter((o) => o.status !== "CANCELLED");
+  const count = (s: OrderStatus) => orders.filter((o) => o.status === s).length;
   return {
     total: orders.length,
-    pending: orders.filter((o) => o.status === "PENDING").length,
-    awaitingPayment: live.filter((o) => o.status === "CONFIRMED" && o.paymentStatus === "PENDING").length,
-    paid: live.filter((o) => o.paymentStatus === "CONFIRMED").length,
-    // Paid and waiting to be sourced/packed, or being packed now
-    processing: orders.filter((o) => o.status === "PROCESSING" || o.status === "PAYMENT_CONFIRMED").length,
-    delivered: orders.filter((o) => o.status === "DELIVERED").length,
-    revenue: live.filter((o) => o.paymentStatus === "CONFIRMED").reduce((s, o) => s + o.total, 0),
+    pending: count("PENDING"),
+    confirmed: count("CONFIRMED"),
+    awaitingPayment: count("AWAITING_PAYMENT"),
+    paymentConfirmed: count("PAYMENT_CONFIRMED"),
+    processing: count("PROCESSING"),
+    shipped: count("SHIPPED"),
+    delivered: count("DELIVERED"),
+    cancelled: count("CANCELLED"),
+    revenue: orders.filter((o) => o.status !== "CANCELLED" && o.paymentStatus === "CONFIRMED").reduce((s, o) => s + o.total, 0),
   };
 }
+
+export * from "./local-accounts";
+

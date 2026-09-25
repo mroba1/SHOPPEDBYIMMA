@@ -1,4 +1,5 @@
 import { listCategories } from "@/lib/data/repo";
+import { getCurrentCustomer } from "@/lib/auth";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { AddedToast, CartDrawer } from "@/components/cart/CartDrawer";
 import { Header } from "@/components/layout/Header";
@@ -8,10 +9,11 @@ import { MobileNav } from "@/components/layout/MobileNav";
 export const dynamic = "force-dynamic";
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
-  const categories = (await listCategories()).map(({ slug, name }) => ({ slug, name }));
+  const [cats, customer] = await Promise.all([listCategories(), getCurrentCustomer()]);
+  const categories = cats.map(({ slug, name }) => ({ slug, name }));
   return (
     <CartProvider>
-      <Header categories={categories} />
+      <Header categories={categories} accountName={customer?.name ?? null} />
       <main className="min-h-[60vh]">{children}</main>
       <Footer categories={categories} />
       <MobileNav />

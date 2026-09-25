@@ -8,7 +8,7 @@ import * as local from "./local-repo";
 //   authenticated with API_SECRET. This runs on the server only, so the secret
 //   never reaches the browser.
 
-export type { CustomerSummary, NewOrderLine, ProductInput } from "./local-repo";
+export type { CustomerSummary, LoginResult, NewOrderLine, ProductInput } from "./local-repo";
 
 type Repo = typeof local;
 type Method = keyof Repo;
@@ -54,4 +54,26 @@ export const updateOrder = pick("updateOrder");
 export const listCustomers = pick("listCustomers");
 export const getStats = pick("getStats");
 export const saveUpload = pick("saveUpload");
+
+// Admin accounts
+export const adminSetupStatus = pick("adminSetupStatus");
+export const verifyAdminLogin = pick("verifyAdminLogin");
+export const getAdmin = pick("getAdmin");
+export const updateAdminProfile = pick("updateAdminProfile");
+export const changeAdminPassword = pick("changeAdminPassword");
+export const logoutAdminEverywhere = pick("logoutAdminEverywhere");
+export const resetAdminPassword = pick("resetAdminPassword");
+
+// Optional customer accounts
+export const registerCustomer = pick("registerCustomer");
+export const verifyCustomerLogin = pick("verifyCustomerLogin");
+export const getCustomerAccount = pick("getCustomerAccount");
+export const updateCustomerProfile = pick("updateCustomerProfile");
+export const changeCustomerPassword = pick("changeCustomerPassword");
+export const listOrdersForCustomer = pick("listOrdersForCustomer");
+export const claimOrder = pick("claimOrder");
+
+// Store settings
+export const getSettings = pick("getSettings");
+export const updateSettings = pick("updateSettings");
 export const readUpload = local.readUpload; // remote mode fetches /uploads directly (see app/uploads)

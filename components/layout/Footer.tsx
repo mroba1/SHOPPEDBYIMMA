@@ -57,7 +57,7 @@ export function Footer({ categories }: { categories: Pick<Category, "slug" | "na
 
         <div className="mt-16 flex flex-col gap-3 border-t border-charcoal/15 pt-6 text-xs tracking-[0.08em] text-espresso/75 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} {site.name}. Independent personal shopper, not affiliated with SHEIN.</p>
-          <Link href="/admin" className="hover:underline">Seller login</Link>
+          <Link href="/account" className="hover:underline">My account</Link>
         </div>
       </div>
     </footer>

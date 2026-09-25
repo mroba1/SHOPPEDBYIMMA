@@ -6,16 +6,23 @@ import { useState, useTransition } from "react";
 import { placeOrder } from "@/lib/actions/orders";
 import { cn } from "@/lib/cn";
 import { useCart } from "@/components/cart/CartProvider";
-import { ArrowLeft, ShieldIcon, WhatsAppIcon } from "@/components/ui/Icons";
+import { ArrowLeft, CheckIcon, ShieldIcon, WhatsAppIcon } from "@/components/ui/Icons";
 import { OrderSummary } from "./OrderSummary";
 
-export function CheckoutForm() {
+export interface CheckoutProfile {
+  name: string;
+  whatsapp: string;
+  address?: string;
+}
+
+/** `profile` is set only when the customer is signed in to their (optional) account. */
+export function CheckoutForm({ profile }: { profile?: CheckoutProfile | null }) {
   const router = useRouter();
   const { lines, ready, clear } = useCart();
   const [pending, start] = useTransition();
   const [error, setError] = useState<{ message: string; field?: string } | null>(null);
   const [placed, setPlaced] = useState(false);
-  const [values, setValues] = useState({ name: "", whatsapp: "", address: "", note: "" });
+  const [values, setValues] = useState({ name: profile?.name ?? "", whatsapp: profile?.whatsapp ?? "", address: profile?.address ?? "", note: "" });
 
   const set = (k: keyof typeof values) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setValues((v) => ({ ...v, [k]: e.target.value }));
@@ -70,6 +77,16 @@ export function CheckoutForm() {
   return (
     <form onSubmit={submit} noValidate className="grid gap-8 lg:grid-cols-[1fr_26rem] lg:gap-14">
       <div className="order-2 lg:order-1">
+        {profile ? (
+          <p className="mb-6 flex items-center gap-2 rounded-2xl bg-blush/35 px-4 py-3 text-sm">
+            <CheckIcon width={16} height={16} className="shrink-0" /> Signed in as {profile.name}. This order will be saved to your account.
+          </p>
+        ) : (
+          <p className="mb-6 rounded-2xl bg-linen/80 px-4 py-3 text-sm text-espresso">
+            Checking out as a guest. No account needed.{" "}
+            <Link href="/account/login?next=/checkout" className="font-semibold underline underline-offset-4">Sign in</Link> if you have one (optional).
+          </p>
+        )}
         <div className="space-y-5">
           <Input id="name" label="Full name" autoComplete="name" value={values.name} onChange={set("name")} error={error?.field === "name"} placeholder="e.g. Jane Doe" />
           <Input

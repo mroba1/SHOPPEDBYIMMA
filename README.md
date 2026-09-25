@@ -1,32 +1,50 @@
 # SHOPPEDBYIMMA — *your shein errand girl*
 
-A storefront and seller dashboard built with Next.js 16, React 19 and Tailwind CSS 4.
-There is no online payment. Customers build a cart, get an order code (e.g. `SBM-7K42P`),
-and send it to the seller on WhatsApp. The seller looks up the code in the admin to see
-exactly which products (with images) were ordered.
+A storefront and private seller dashboard built with Next.js 16, React 19 and Tailwind CSS 4.
+There is no online payment. Customers build a cart, get an order code (e.g. `SBM-7K42P`)
+and send it to the seller on WhatsApp. The seller pastes the code into her dashboard and sees
+exactly which products were ordered, with photos.
 
 ## Run it
 
 ```bash
 npm install
-cp .env.example .env.local   # set ADMIN_PASSWORD and ADMIN_SECRET
 npm run dev                  # http://localhost:3000
 ```
 
 - Store: `/`
-- Seller studio: `/admin` (default password `imma-admin` if `.env.local` is not set)
+- Seller studio: `/manage-shoppedbyimma` (in dev: `admin@shoppedbyimma.com` / `imma-admin`)
+- Optional customer accounts: `/account`
 
-The first request creates `data/db.json` with demo categories, 25 products and 7 sample orders.
-Delete the `data/` folder to reset.
+The first request creates `data/db.json` with demo categories, 25 products and 8 sample orders.
+To reset, stop the server, delete `data/`, and start it again.
 
 ## Flows
 
-**Customer:** Home → Shop / Category → Product (size & colour) → Add to cart → Cart →
-Checkout (name, WhatsApp, address, note) → Order code page → **Continue to WhatsApp** (message pre-filled).
+**Customer:** Home → Shop → Product (size & colour) → Cart → Checkout (name, WhatsApp, address, note) →
+order code → **Continue to WhatsApp** (message pre-filled). No account needed. Customers can
+optionally create one to see their orders and statuses and get checkout pre-filled.
 
-**Seller:** Dashboard → paste the code (or just `7K42P`) → order with product photos, codes,
-sizes, colours, quantities → *Items available — confirm* → *Mark payment confirmed* →
-Processing → Shipped → Delivered. Pre-written WhatsApp replies to the customer are on every order.
+**Seller:** private URL → sign in → Dashboard → paste the code (or the whole WhatsApp message) →
+**Find order** → photos, product codes, sizes, colours, quantities, prices → Confirm →
+Awaiting payment → Payment confirmed → Processing → Shipped → Delivered.
+
+## Admin security
+
+| Layer | What it does |
+| --- | --- |
+| Private URL | Login lives at `/<ADMIN_PATH>` only. `/admin/*` returns **404** to strangers, and `/admin/login` can't be opened directly. Browsers that have signed in before are sent to the login page. |
+| Passwords | Hashed with scrypt, stored on the server that owns the data. Never in frontend code. |
+| Sessions | httpOnly, signed (HMAC-SHA256) cookies that expire after 12 h. Changing the password or "Log out of all devices" invalidates every old session. |
+| Checks | `proxy.ts` (fast signature check) → every admin layout/page → every server action, including a database check of the account. |
+| Brute force | 5 wrong passwords lock that login for 15 minutes. |
+| Forgot password | Needs `ADMIN_RECOVERY_KEY` (a server-only secret). There's no email service yet. |
+| No registration | Admin accounts can't be created from the website. The first one comes from `ADMIN_EMAIL` / `ADMIN_PASSWORD`. |
+
+Order codes are random (`SBM-` plus 5 characters from a 32-letter alphabet with no O/0/I/1),
+unique in the database, and never sequential.
+Each order stores a **snapshot** of every item (name, code, image, price, size, colour, quantity),
+so editing or deleting a product never changes past orders.
 
 ## Where things live
 
@@ -34,49 +52,44 @@ Processing → Shipped → Delivered. Pre-written WhatsApp replies to the custom
 | --- | --- |
 | `lib/config.ts` | Business name, WhatsApp number, socials |
 | `app/globals.css` | Brand palette from the flyer. Tailwind's default colours are disabled |
-| `lib/types.ts` | Category, Product, Order and CartLine types |
+| `lib/types.ts` | Category, Product, Order, AdminUser, CustomerAccount, StoreSettings |
 | `lib/data/repo.ts` | The data API the app imports: local file in dev, Render backend when `API_URL` is set |
-| `lib/data/local-repo.ts` | The actual data logic (orders, products, pricing). Swap for Prisma/Postgres here |
+| `lib/data/local-repo.ts` | Products, orders, status rules, order codes |
+| `lib/data/local-accounts.ts` | Admin + customer accounts, login protection, settings |
 | `lib/data/store.ts` | JSON-file storage (`DATA_DIR`, default `./data`) |
-| `backend/server.ts` | Render backend: exposes `local-repo` over HTTP |
-| `lib/data/seed.ts` | Demo catalogue |
-| `lib/actions/` | Server actions (place order, update status, products, upload, login) |
-| `components/` | Header, Footer, ProductCard/Grid, CategoryCard, CartDrawer, CartItem, CheckoutForm, OrderSummary, WhatsAppCheckoutButton, AdminSidebar, AdminOrderTable, AdminProductTable, OrderDetails, StatusBadge… |
+| `lib/auth.ts`, `lib/session.ts`, `proxy.ts` | Sessions and route protection |
+| `backend/server.ts` | Render backend: exposes the data layer over HTTP |
+| `app/admin/` | Seller studio: dashboard, orders, products, categories, customers, settings |
+| `app/(store)/account/` | Optional customer accounts |
 
 ## Deploying: Render (backend) + Vercel (frontend)
 
 ```
-Browser ──► Vercel (Next.js: pages, cart, checkout, admin login)
+Browser ──► Vercel (Next.js: shop, checkout, admin UI, sessions)
                 │  server-side only, Bearer API_SECRET
                 ▼
             Render (backend/server.ts) ──► persistent disk: db.json + uploads/
 ```
 
-The browser never calls Render directly, and the API secret stays on the servers.
-Locally, leave `API_URL` empty and everything runs from `data/db.json` with no backend.
-
 ### 1. Render (do this first)
 
 1. Render dashboard → **New → Blueprint** → select this repo. `render.yaml` creates the
-   `shoppedbyimma-api` service with a 1 GB disk at `/var/data`. This needs the Starter plan; the free plan has no disks.
-2. Once it's live, open the service → **Environment** → copy the generated `API_SECRET`.
-3. Check that `https://<your-service>.onrender.com/health` returns `{"ok":true,…}`.
+   `shoppedbyimma-api` service with a 1 GB disk (Starter plan; the free plan has no disks).
+2. When asked, enter **ADMIN_EMAIL** and **ADMIN_PASSWORD** for the seller's login.
+3. Once it's live, copy `API_SECRET` and `ADMIN_RECOVERY_KEY` from **Environment**. Keep the recovery key somewhere safe.
+4. Check that `https://<your-service>.onrender.com/health` returns `{"ok":true,…}`.
 
 ### 2. Vercel
-
-1. **Add New → Project** → import this repo (Next.js is detected automatically).
-2. Add these environment variables:
 
 | Name | Value |
 | --- | --- |
 | `API_URL` | `https://<your-service>.onrender.com` |
 | `API_SECRET` | the value copied from Render |
-| `ADMIN_PASSWORD` | the seller's login password |
-| `ADMIN_SECRET` | any long random string (signs the login cookie) |
+| `SESSION_SECRET` | 32+ random characters (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`) |
+| `ADMIN_PATH` | your private login path, e.g. `manage-shoppedbyimma-7q2x` |
 
-3. Deploy. `vercel.json` runs the functions in Frankfurt (`fra1`), next to the Render service.
+### Preview on Vercel without Render
 
-### Notes
-
-- Order totals are always recalculated on the backend from product prices. Prices sent by the browser are never trusted.
-- Render takes daily disk snapshots. When the shop grows, move `lib/data/local-repo.ts` to Postgres; nothing else has to change.
+Leave `API_URL` empty and set `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (and optionally
+`ADMIN_PATH`) on Vercel. Everything works, but data lives in Vercel's temp storage and resets
+whenever Vercel starts a fresh instance. Use it for looking around, not for real orders.

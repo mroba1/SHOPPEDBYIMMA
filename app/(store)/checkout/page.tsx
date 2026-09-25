@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { getCurrentCustomer } from "@/lib/auth";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 
 export const metadata: Metadata = { title: "Checkout" };
 
-export default function CheckoutPage() {
+export default async function CheckoutPage() {
+  const me = await getCurrentCustomer();
   return (
     <div className="mx-auto max-w-6xl px-5 pt-10 pb-16 sm:px-6 lg:px-10 lg:pt-16">
       <ol className="mb-8 flex items-center gap-2 text-[0.68rem] font-semibold tracking-[0.14em] text-taupe uppercase">
@@ -19,7 +21,7 @@ export default function CheckoutPage() {
         Almost <span className="font-serif text-[1.12em] italic">there</span>
       </h1>
       <p className="mt-4 mb-10 max-w-lg text-espresso/80">Just the essentials, so we know who you are and where to deliver.</p>
-      <CheckoutForm />
+      <CheckoutForm profile={me ? { name: me.name, whatsapp: me.whatsapp, address: me.address } : null} />
     </div>
   );
 }

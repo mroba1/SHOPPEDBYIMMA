@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { checkPassword, endSession, requireAdmin, startSession } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import {
   deleteCategory,
   deleteProduct,
@@ -20,20 +19,8 @@ const refresh = () => {
   revalidatePath("/", "layout");
 };
 
-// ---------- Auth ----------
-
-export async function login(_: { error?: string } | undefined, form: FormData) {
-  const password = String(form.get("password") ?? "");
-  if (!checkPassword(password)) return { error: "That password isn't right. Please try again." };
-  await startSession();
-  const next = String(form.get("next") ?? "");
-  redirect(next.startsWith("/admin") ? next : "/admin");
-}
-
-export async function logout() {
-  await endSession();
-  redirect("/admin/login");
-}
+// Every action below starts with requireAdmin(): server actions are public
+// HTTP endpoints, so each one checks the session itself.
 
 // ---------- Uploads ----------
 

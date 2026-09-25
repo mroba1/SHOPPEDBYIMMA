@@ -1,24 +1,32 @@
+import { requireAdmin } from "@/lib/auth";
 import { listOrders } from "@/lib/data/repo";
-import { AdminOrderTable } from "@/components/admin/AdminOrderTable";
+import { ORDER_STATUSES } from "@/lib/format";
+import type { OrderStatus } from "@/lib/types";
+import { AdminOrderTable, type OrderFilter } from "@/components/admin/AdminOrderTable";
 import { OrderSearch } from "@/components/admin/OrderSearch";
+import { PageHeader } from "@/components/admin/PageHeader";
 
 export const metadata = { title: "Orders" };
 
-export default async function OrdersPage() {
-  const orders = await listOrders();
+export default async function OrdersPage({ searchParams }: PageProps<"/admin/orders">) {
+  await requireAdmin();
+  const [orders, sp] = await Promise.all([listOrders(), searchParams]);
+  const status = String(sp.status ?? "");
+  const initialFilter: OrderFilter = ORDER_STATUSES.includes(status as OrderStatus) ? (status as OrderStatus) : "ALL";
+
   return (
     <div>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="font-serif text-4xl italic">Orders</h1>
-          <p className="mt-1 text-sm text-taupe">Every order placed on the website, newest first.</p>
-        </div>
-        <div className="lg:w-[26rem]">
-          <OrderSearch size="sm" />
-        </div>
-      </div>
+      <PageHeader
+        title="Orders"
+        description={`${orders.length} order${orders.length === 1 ? "" : "s"} from the website, newest first.`}
+        actions={
+          <div className="w-full sm:w-[24rem]">
+            <OrderSearch size="sm" />
+          </div>
+        }
+      />
       <div className="mt-8">
-        <AdminOrderTable orders={orders} />
+        <AdminOrderTable key={initialFilter} orders={orders} initialFilter={initialFilter} />
       </div>
     </div>
   );

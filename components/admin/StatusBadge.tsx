@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 const orderStyles: Record<OrderStatus, string> = {
   PENDING: "bg-linen text-espresso ring-espresso/15",
   CONFIRMED: "bg-blush/55 text-charcoal ring-blush-deep/40",
+  AWAITING_PAYMENT: "bg-blush-soft text-[#8a4f3b] ring-blush-deep/70",
   PAYMENT_CONFIRMED: "bg-gold/20 text-[#6f532d] ring-gold/40",
   PROCESSING: "bg-nude/60 text-espresso ring-taupe/30",
   SHIPPED: "bg-espresso text-blush ring-espresso",
