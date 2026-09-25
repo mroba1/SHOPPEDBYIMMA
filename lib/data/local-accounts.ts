@@ -1,4 +1,4 @@
-import { randomUUID, timingSafeEqual } from "crypto";
+import { createHash, randomUUID, timingSafeEqual } from "crypto";
 import type { AdminUser, CustomerAccount, PublicAdmin, PublicCustomer, StoreSettings } from "../types";
 import { dummyHash, hashPassword, passwordProblem, verifyPassword } from "../password";
 import { read, write } from "./store";
@@ -115,7 +115,11 @@ async function ensureAdmin() {
   await write((d) => {
     if (d.admins.length) return;
     d.admins.push({
-      id: `adm_${randomUUID().slice(0, 10)}`,
+      // Derived from the email (not random) so every server instance that
+      // creates this admin gives it the same id. On Vercel several copies of
+      // the site run side by side; a random id made a login from one copy
+      // look invalid on the next, bouncing the owner back to the login page.
+      id: `adm_${createHash("sha256").update(email).digest("hex").slice(0, 12)}`,
       name: process.env.ADMIN_NAME || "Imma",
       email,
       passwordHash,
@@ -156,6 +160,9 @@ export async function verifyAdminLogin(email: string, password: string): Promise
 }
 
 export async function getAdmin(id: string) {
+  // A fresh server instance may get an admin page as its very first request
+  // (Vercel runs several), so make sure the admin exists before looking it up.
+  await ensureAdmin();
   const db = await read();
   const a = db.admins.find((x) => x.id === id);
   return a ? publicAdmin(a) : null;
