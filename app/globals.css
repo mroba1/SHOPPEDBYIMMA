@@ -1,26 +1,210 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  SHOPPEDBYIMMA design tokens — sampled straight from the flyer.
+  `--color-*: initial` wipes Tailwind's default palette so no stray blue,
+  purple or green can ever sneak into the UI. Only these colours exist.
+*/
+@theme {
+  --color-*: initial;
+
+  /* Darks (flyer background #292823) */
+  --color-ink: #1d1c18;
+  --color-charcoal: #292823;
+  --color-espresso: #3b3731;
+  --color-smoke: #57514a;
+
+  /* Blush / peach (flyer footer band & polaroid frames #e2bdaa) */
+  --color-blush: #e2bdaa;
+  --color-blush-soft: #f1dcd1;
+  --color-blush-deep: #c99a84;
+
+  /* Warm neutrals */
+  --color-nude: #d9c3b6;
+  --color-linen: #efe4d9;
+  --color-cream: #f8f2ec;
+  --color-white: #ffffff;
+  --color-taupe: #857569;
+  --color-mist: #b3a69c;
+  --color-gold: #b8925f;
+
+  /* The one strong accent, borrowed from the red dress on the flyer.
+     Used only for errors and cancelled orders. */
+  --color-rouge: #a3473b;
+
+  --animate-pop: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 0.35s ease both;
+  --animate-toast: toast 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-sheet: sheet 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-marquee: marquee 38s linear infinite;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-cormorant), "Times New Roman", serif;
+  --font-display: var(--font-josefin), var(--font-manrope), sans-serif;
+  --font-script: var(--font-caveat), cursive;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes pop {
+  0% { transform: scale(0.4); }
+  100% { transform: scale(1); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes toast {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sheet {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ken {
+  from { transform: scale(1.12); }
+  to { transform: scale(1); }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+  }
+  body {
+    background: var(--color-cream);
+    color: var(--color-charcoal);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-blush);
+    color: var(--color-charcoal);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-blush-deep);
+    outline-offset: 3px;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .btn {
+    display: inline-flex;
+    min-height: 3.5rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    border-radius: 9999px;
+    padding-inline: 2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: transform 0.2s ease, background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .btn-dark {
+    background: var(--color-charcoal);
+    color: var(--color-cream);
+  }
+  .btn-dark:hover:not(:disabled) {
+    background: var(--color-ink);
+    box-shadow: 0 14px 30px -14px rgb(29 28 24 / 0.7);
+  }
+  .btn-blush {
+    background: var(--color-blush);
+    color: var(--color-charcoal);
+  }
+  .btn-blush:hover:not(:disabled) {
+    background: var(--color-blush-soft);
+    box-shadow: 0 14px 34px -14px rgb(226 189 170 / 0.8);
+  }
+  .btn-ghost-light {
+    border: 1px solid rgb(248 242 236 / 0.35);
+    color: var(--color-cream);
+  }
+  .btn-ghost-light:hover {
+    border-color: var(--color-blush);
+    color: var(--color-blush);
+  }
+
+  /* Small uppercase label used above headings */
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  /* Product codes — monospaced so SBM-FA-001 reads unambiguously */
+  .code-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+  }
+
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .link-underline:hover {
+    background-size: 100% 1px;
+  }
+
+  .reveal {
+    animation: reveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .ken-burns {
+    animation: ken 2.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  /* Thin editorial grid lines, like the reference UI */
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, rgb(226 189 170 / 0.09) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(226 189 170 / 0.09) 1px, transparent 1px);
+    background-size: 25% 100%, 100% 33.333%;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SHOPPEDBYIMMA — *your shein errand girl*
 
-## Getting Started
+A storefront and seller dashboard built with Next.js 16, React 19 and Tailwind CSS 4.
+There is no online payment. Customers build a cart, get an order code (e.g. `SBM-7K42P`),
+and send it to the seller on WhatsApp. The seller looks up the code in the admin to see
+exactly which products (with images) were ordered.
 
-First, run the development server:
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # set ADMIN_PASSWORD and ADMIN_SECRET
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Store: `/`
+- Seller studio: `/admin` (default password `imma-admin` if `.env.local` is not set)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The first request creates `data/db.json` with demo categories, 25 products and 7 sample orders.
+Delete the `data/` folder to reset.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Flows
 
-## Learn More
+**Customer:** Home → Shop / Category → Product (size & colour) → Add to cart → Cart →
+Checkout (name, WhatsApp, address, note) → Order code page → **Continue to WhatsApp** (message pre-filled).
 
-To learn more about Next.js, take a look at the following resources:
+**Seller:** Dashboard → paste the code (or just `7K42P`) → order with product photos, codes,
+sizes, colours, quantities → *Items available — confirm* → *Mark payment confirmed* →
+Processing → Shipped → Delivered. Pre-written WhatsApp replies to the customer are on every order.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Where things live
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Path | What |
+| --- | --- |
+| `lib/config.ts` | Business name, WhatsApp number, socials |
+| `app/globals.css` | Brand palette from the flyer. Tailwind's default colours are disabled |
+| `lib/types.ts` | Category, Product, Order and CartLine types |
+| `lib/data/repo.ts` | **All data access.** Swap for Prisma/Supabase here |
+| `lib/data/store.ts` | JSON-file storage used by the MVP |
+| `lib/data/seed.ts` | Demo catalogue |
+| `lib/actions/` | Server actions (place order, update status, products, upload, login) |
+| `components/` | Header, Footer, ProductCard/Grid, CategoryCard, CartDrawer, CartItem, CheckoutForm, OrderSummary, WhatsAppCheckoutButton, AdminSidebar, AdminOrderTable, AdminProductTable, OrderDetails, StatusBadge… |
 
-## Deploy on Vercel
+## Before going live
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The JSON file and `data/uploads/` need a persistent disk (a VPS, Railway or Render with a volume).
+  On serverless hosts like Vercel, move `repo.ts` to a real database and store uploads in S3, Cloudinary or Supabase Storage.
+- Set a strong `ADMIN_PASSWORD` and a random `ADMIN_SECRET`.
+- Order totals are always recalculated on the server from product prices. Prices sent by the browser are never trusted.
