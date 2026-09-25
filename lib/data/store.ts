@@ -1,4 +1,3 @@
-import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -15,7 +14,8 @@ export interface DbShape {
   orders: Order[];
 }
 
-const DATA_DIR = path.join(process.cwd(), "data");
+// On Render, DATA_DIR points at the mounted persistent disk (see render.yaml).
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 export const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 

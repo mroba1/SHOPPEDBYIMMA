@@ -35,15 +35,48 @@ Processing → Shipped → Delivered. Pre-written WhatsApp replies to the custom
 | `lib/config.ts` | Business name, WhatsApp number, socials |
 | `app/globals.css` | Brand palette from the flyer. Tailwind's default colours are disabled |
 | `lib/types.ts` | Category, Product, Order and CartLine types |
-| `lib/data/repo.ts` | **All data access.** Swap for Prisma/Supabase here |
-| `lib/data/store.ts` | JSON-file storage used by the MVP |
+| `lib/data/repo.ts` | The data API the app imports: local file in dev, Render backend when `API_URL` is set |
+| `lib/data/local-repo.ts` | The actual data logic (orders, products, pricing). Swap for Prisma/Postgres here |
+| `lib/data/store.ts` | JSON-file storage (`DATA_DIR`, default `./data`) |
+| `backend/server.ts` | Render backend: exposes `local-repo` over HTTP |
 | `lib/data/seed.ts` | Demo catalogue |
 | `lib/actions/` | Server actions (place order, update status, products, upload, login) |
 | `components/` | Header, Footer, ProductCard/Grid, CategoryCard, CartDrawer, CartItem, CheckoutForm, OrderSummary, WhatsAppCheckoutButton, AdminSidebar, AdminOrderTable, AdminProductTable, OrderDetails, StatusBadge… |
 
-## Before going live
+## Deploying: Render (backend) + Vercel (frontend)
 
-- The JSON file and `data/uploads/` need a persistent disk (a VPS, Railway or Render with a volume).
-  On serverless hosts like Vercel, move `repo.ts` to a real database and store uploads in S3, Cloudinary or Supabase Storage.
-- Set a strong `ADMIN_PASSWORD` and a random `ADMIN_SECRET`.
-- Order totals are always recalculated on the server from product prices. Prices sent by the browser are never trusted.
+```
+Browser ──► Vercel (Next.js: pages, cart, checkout, admin login)
+                │  server-side only, Bearer API_SECRET
+                ▼
+            Render (backend/server.ts) ──► persistent disk: db.json + uploads/
+```
+
+The browser never calls Render directly, and the API secret stays on the servers.
+Locally, leave `API_URL` empty and everything runs from `data/db.json` with no backend.
+
+### 1. Render (do this first)
+
+1. Render dashboard → **New → Blueprint** → select this repo. `render.yaml` creates the
+   `shoppedbyimma-api` service with a 1 GB disk at `/var/data`. This needs the Starter plan; the free plan has no disks.
+2. Once it's live, open the service → **Environment** → copy the generated `API_SECRET`.
+3. Check that `https://<your-service>.onrender.com/health` returns `{"ok":true,…}`.
+
+### 2. Vercel
+
+1. **Add New → Project** → import this repo (Next.js is detected automatically).
+2. Add these environment variables:
+
+| Name | Value |
+| --- | --- |
+| `API_URL` | `https://<your-service>.onrender.com` |
+| `API_SECRET` | the value copied from Render |
+| `ADMIN_PASSWORD` | the seller's login password |
+| `ADMIN_SECRET` | any long random string (signs the login cookie) |
+
+3. Deploy. `vercel.json` runs the functions in Frankfurt (`fra1`), next to the Render service.
+
+### Notes
+
+- Order totals are always recalculated on the backend from product prices. Prices sent by the browser are never trusted.
+- Render takes daily disk snapshots. When the shop grows, move `lib/data/local-repo.ts` to Postgres; nothing else has to change.

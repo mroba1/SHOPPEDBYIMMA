@@ -1,0 +1,22 @@
+# Render Blueprint for the BACKEND (the storefront runs on Vercel).
+# Render dashboard → New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: shoppedbyimma-api
+    runtime: node
+    plan: starter            # persistent disks need a paid instance
+    region: frankfurt        # keep Vercel's functions in the same region (vercel.json → fra1)
+    buildCommand: npm ci
+    startCommand: npm run backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATA_DIR
+        value: /var/data
+      - key: API_SECRET
+        generateValue: true  # copy this value into Vercel's API_SECRET
+    disk:
+      name: shop-data
+      mountPath: /var/data   # db.json + uploads/ live here and survive deploys
+      sizeGB: 1

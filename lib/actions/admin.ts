@@ -1,8 +1,5 @@
 "use server";
 
-import { randomUUID } from "crypto";
-import { promises as fs } from "fs";
-import path from "path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { checkPassword, endSession, requireAdmin, startSession } from "@/lib/auth";
@@ -10,12 +7,12 @@ import {
   deleteCategory,
   deleteProduct,
   saveCategory,
+  saveUpload,
   saveProduct,
   setProductAvailability,
   suggestProductCode,
   type ProductInput,
 } from "@/lib/data/repo";
-import { UPLOAD_DIR } from "@/lib/data/store";
 
 type Result = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -45,13 +42,12 @@ export async function uploadImage(dataUrl: string): Promise<{ ok: true; url: str
   await requireAdmin();
   const match = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec(dataUrl);
   if (!match) return { ok: false, error: "Please upload a JPG, PNG or WEBP image." };
-  const buf = Buffer.from(match[2], "base64");
-  if (buf.length > 3 * 1024 * 1024) return { ok: false, error: "Image is too large (max 3MB)." };
-  const ext = match[1] === "jpeg" ? "jpg" : match[1];
-  const name = `${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
-  await fs.writeFile(path.join(UPLOAD_DIR, name), buf);
-  return { ok: true, url: `/uploads/${name}` };
+  try {
+    const url = await saveUpload(match[2], match[1] === "jpeg" ? "jpg" : (match[1] as "png" | "webp"));
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Upload failed." };
+  }
 }
 
 // ---------- Products ----------
