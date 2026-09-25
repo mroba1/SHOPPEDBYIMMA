@@ -1,4 +1,5 @@
 import { promises as fs } from "fs";
+import os from "os";
 import path from "path";
 import { randomUUID } from "crypto";
 import type { Category, Order, Product } from "../types";
@@ -14,8 +15,13 @@ export interface DbShape {
   orders: Order[];
 }
 
-// On Render, DATA_DIR points at the mounted persistent disk (see render.yaml).
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+// Where the JSON file and uploads live:
+// • Render: DATA_DIR points at the mounted persistent disk (see render.yaml).
+// • Vercel with no backend (preview mode): the project folder is read-only, so use
+//   the temp dir. Data there resets whenever Vercel starts a fresh instance.
+// • Local dev: ./data
+const DATA_DIR =
+  process.env.DATA_DIR || (process.env.VERCEL ? path.join(os.tmpdir(), "shoppedbyimma") : path.join(process.cwd(), "data"));
 const DB_FILE = path.join(DATA_DIR, "db.json");
 export const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 
@@ -33,7 +39,9 @@ async function init(): Promise<DbShape> {
     if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
     const products = buildSeedProducts();
     const db: DbShape = { categories: seedCategories, products, orders: buildSeedOrders(products) };
-    await persist(db);
+    // Never let a failed first save take the whole site down: the demo
+    // catalogue still renders from memory.
+    await persist(db).catch((err) => console.warn("[store] could not save seed data:", err.message));
     return db;
   }
 }
