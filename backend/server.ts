@@ -10,6 +10,7 @@
 import http from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import * as repo from "../lib/data/local-repo";
+import { storageKind, usesDatabase } from "../lib/data/store";
 
 const PORT = Number(process.env.PORT) || 4000;
 const SECRET = process.env.API_SECRET ?? "";
@@ -18,6 +19,12 @@ const MAX_BODY = 6 * 1024 * 1024; // base64 photos from the admin
 if (SECRET.length < 16) {
   console.error("API_SECRET must be set (16+ characters). Refusing to start.");
   process.exit(1);
+}
+
+// Render's free plan has no permanent disk: without a database, every restart
+// would wipe the shop's orders. Make that impossible to miss in the logs.
+if (process.env.RENDER && !usesDatabase && !process.env.DATA_DIR) {
+  console.warn("⚠️  No DATABASE_URL and no persistent DATA_DIR: orders will be LOST on every restart. Set DATABASE_URL (Neon).");
 }
 
 // Everything callable over RPC. readUpload is served by GET /uploads instead.
@@ -56,8 +63,8 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (req.method === "GET" && url.pathname === "/health") {
-      const stats = await repo.getStats(); // also proves the disk is readable
-      return send(res, 200, { ok: true, orders: stats.total });
+      const stats = await repo.getStats(); // also proves the storage is readable
+      return send(res, 200, { ok: true, orders: stats.total, storage: usesDatabase ? "database" : "file" });
     }
 
     const upload = /^\/uploads\/([\w-]+\.(jpg|png|webp))$/.exec(url.pathname);
@@ -93,4 +100,4 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => console.log(`ShoppedByImma backend listening on :${PORT}`));
+server.listen(PORT, () => console.log(`ShoppedByImma backend listening on :${PORT} · storage: ${storageKind}`));

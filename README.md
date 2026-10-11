@@ -68,18 +68,29 @@ so editing or deleting a product never changes past orders.
 Browser ──► Vercel (Next.js: shop, checkout, admin UI, sessions)
                 │  server-side only, Bearer API_SECRET
                 ▼
-            Render (backend/server.ts) ──► persistent disk: db.json + uploads/
+            Render free (backend/server.ts) ──► Neon free Postgres (orders, products, photos)
 ```
 
-### 1. Render (do this first)
+Render's free plan has no permanent disk, so the backend keeps everything in a Neon
+Postgres database (`DATABASE_URL`). It creates its own table on first start.
+
+### 1. Neon (database)
+
+1. Sign up at **neon.tech** → create a project (region: **AWS Europe (Frankfurt)**).
+2. On the project dashboard, click **Connect** and copy the **connection string**
+   (starts with `postgresql://…`).
+
+### 2. Render (backend)
 
 1. Render dashboard → **New → Blueprint** → select this repo. `render.yaml` creates the
-   `shoppedbyimma-api` service with a 1 GB disk (Starter plan; the free plan has no disks).
-2. When asked, enter **ADMIN_EMAIL** and **ADMIN_PASSWORD** for the seller's login.
-3. Once it's live, copy `API_SECRET` and `ADMIN_RECOVERY_KEY` from **Environment**. Keep the recovery key somewhere safe.
-4. Check that `https://<your-service>.onrender.com/health` returns `{"ok":true,…}`.
+   free `shoppedbyimma-api` service.
+2. When asked, fill in `DATABASE_URL` (from Neon), `ADMIN_EMAIL`, `ADMIN_PASSWORD` and `ADMIN_RECOVERY_KEY`.
+3. Once it's live, copy `API_SECRET` from **Environment**.
+4. Check that `https://<your-service>.onrender.com/health` returns `{"ok":true,…,"storage":"database"}`.
+5. Optional: Render's free plan sleeps after 15 minutes idle, and the first visit then takes ~50s.
+   A free uptime checker (cron-job.org or UptimeRobot) hitting `/health` every 10 minutes keeps it awake.
 
-### 2. Vercel
+### 3. Vercel (website)
 
 | Name | Value |
 | --- | --- |

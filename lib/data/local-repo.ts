@@ -1,11 +1,9 @@
 import { randomInt, randomUUID } from "crypto";
-import { promises as fs } from "fs";
-import path from "path";
 import type { Category, CustomerInfo, Order, OrderStatus, PaymentStatus, Product } from "../types";
 // Accounts, sessions support and store settings live in ./local-accounts (re-exported at the bottom).
 import { orderStatusLabel } from "../format";
 import { site } from "../config";
-import { UPLOAD_DIR, read, write } from "./store";
+import { getFile, putFile, read, write } from "./store";
 import { slugify } from "./seed";
 
 // This is the real data layer. The Next.js app uses it directly in local dev,
@@ -20,18 +18,13 @@ export async function saveUpload(base64: string, ext: "jpg" | "png" | "webp") {
   const buf = Buffer.from(base64, "base64");
   if (buf.length > 3 * 1024 * 1024) throw new Error("Image is too large (max 3MB).");
   const name = `${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
-  await fs.writeFile(path.join(UPLOAD_DIR, name), buf);
+  await putFile(name, buf);
   return `/uploads/${name}`;
 }
 
 export async function readUpload(name: string): Promise<Buffer | null> {
   if (!UPLOAD_NAME.test(name)) return null;
-  try {
-    return await fs.readFile(path.join(UPLOAD_DIR, name));
-  } catch {
-    return null;
-  }
+  return getFile(name);
 }
 
 // ---------- Categories ----------
